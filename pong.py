@@ -33,7 +33,7 @@ start_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 30)
 hit_sound = pygame.mixer.Sound(r"_internal\hit.wav")
 score_sound = pygame.mixer.Sound(r"_internal\score.mp3")
 bob = pygame.mixer.Sound(r"_internal\bob.wav")
-icon_image = pygame.image.load(r'_internal\table-tennis-racket.ico')
+icon_image = pygame.image.load(r"_internal\table-tennis-racket.ico")
 pygame.display.set_icon(icon_image)
 
 class Paddle:
@@ -59,9 +59,8 @@ class Ball:
         self.rect = pygame.Rect(x, y, ball_size, ball_size)
         self.speed_x = speed * random.choice((1, -1))
         self.speed_y = speed * random.choice((1, -1))
-
+    
     def move(self):
-        
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
 
@@ -77,10 +76,24 @@ class Ball:
         self.rect = None
 
 def start_screen():
-    
     screen.fill(black)
-    start_text = start_font.render("Press SPACEBAR to start", True, white)
-    screen.blit(start_text, (screen_width // 2 - start_text.get_width() // 2, screen_height // 2 - start_text.get_height() // 2))
+
+    title_text = font.render("PONG", True, white)
+    option_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 28)
+
+    slow_text = option_font.render("1 - Slow", True, white)
+    normal_text = option_font.render("2 - Normal", True, white)
+    fast_text = option_font.render("3 - Fast", True, white)
+
+    screen.blit(title_text,
+                (screen_width // 2 - title_text.get_width() // 2, 120))
+    screen.blit(slow_text,
+                (screen_width // 2 - slow_text.get_width() // 2, 260))
+    screen.blit(normal_text,
+                (screen_width // 2 - normal_text.get_width() // 2, 310))
+    screen.blit(fast_text,
+                (screen_width // 2 - fast_text.get_width() // 2, 360))
+
     pygame.display.flip()
 
     waiting = True
@@ -89,9 +102,77 @@ def start_screen():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
+
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    waiting = False
+                if event.key == pygame.K_1:
+                    return 4
+                if event.key == pygame.K_2:
+                    return 6
+                if event.key == pygame.K_3:
+                    return 8
+
+def choose_speed():
+    screen.fill(black)
+
+    title_text = font.render("Choose Speed", True, white)
+    option_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 28)
+
+    slow_text = option_font.render("1 - Slow", True, white)
+    normal_text = option_font.render("2 - Normal", True, white)
+    fast_text = option_font.render("3 - Fast", True, white)
+
+    screen.blit(title_text,
+                (screen_width // 2 - title_text.get_width() // 2, 150))
+    screen.blit(slow_text,
+                (screen_width // 2 - slow_text.get_width() // 2, 280))
+    screen.blit(normal_text,
+                (screen_width // 2 - normal_text.get_width() // 2, 330))
+    screen.blit(fast_text,
+                (screen_width // 2 - fast_text.get_width() // 2, 380))
+
+    pygame.display.flip()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    return 5      # Slow speed
+                if event.key == pygame.K_2:
+                    return 6      # Normal speed
+                if event.key == pygame.K_3:
+                    return 7      # Fast speed
+
+def countdown(message=""):
+    for i in range(3, 0, -1):
+        screen.fill(black)
+
+        if message:
+            msg_text = start_font.render(message, True, white)
+            screen.blit(
+                msg_text,
+                (
+                    screen_width // 2 - msg_text.get_width() // 2,
+                    screen_height // 2 - 100
+                )
+            )
+
+        number_text = font.render(str(i), True, white)
+        screen.blit(
+            number_text,
+            (
+                screen_width // 2 - number_text.get_width() // 2,
+                screen_height // 2 - number_text.get_height() // 2
+            )
+        )
+
+        pygame.display.flip()
+        pygame.time.delay(1000)
+
 
 def game_loop(initial_ball_speed=5.3):
     clock = pygame.time.Clock()
@@ -104,10 +185,17 @@ def game_loop(initial_ball_speed=5.3):
 
     player = Paddle(player_start_x, player_start_y)
     opponent = Paddle(opponent_start_x, opponent_start_y)
-    min_ball_speed = 1
-    speed_increment = 0.0004
-    ball_speed = initial_ball_speed
-    ball = Ball(screen_width // 2 - ball_size // 2, screen_height // 2 - ball_size // 2, speed=ball_speed)
+
+    # --- NEW SYSTEM VARIABLES ---
+    pause_button = pygame.Rect(350, 30, 90, 40)
+    paused = False
+    # ----------------------------
+
+    ball = Ball(
+        screen_width // 2 - ball_size // 2,
+        screen_height // 2 - ball_size // 2,
+        speed=initial_ball_speed
+    )
 
     player_score = 0
     opponent_score = 0
@@ -115,97 +203,136 @@ def game_loop(initial_ball_speed=5.3):
 
     while running:
         for event in pygame.event.get():
-            if event.type is pygame.QUIT:
+
+            if event.type == pygame.QUIT:
                 running = False
-            if event.type is pygame.KEYDOWN:
+
+            if event.type == pygame.KEYDOWN:
+
                 if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                     running = False
 
+                # Pause toggle
+                if event.key == pygame.K_p:
+                    paused = not paused
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if pause_button.collidepoint(event.pos):
+                    paused = not paused
+
         keys = pygame.key.get_pressed()
-        player_moving_up = keys[pygame.K_UP] and player.rect.top > 0
-        player_moving_down = keys[pygame.K_DOWN] and player.rect.bottom < screen_height
-        opponent_moving_up = keys[pygame.K_w] and opponent.rect.top > 0
-        opponent_moving_down = keys[pygame.K_s] and opponent.rect.bottom < screen_height
 
-        if player_moving_up:
-            player.move(up=True)
-        if player_moving_down:
-            player.move(up=False)
-        if opponent_moving_up:
-            opponent.move(up=True)
-        if opponent_moving_down:
-            opponent.move(up=False)
+        if not paused:
+            if keys[pygame.K_UP] and player.rect.top > 0:
+                player.move(up=True)
+            if keys[pygame.K_DOWN] and player.rect.bottom < screen_height:
+                player.move(up=False)
+            if keys[pygame.K_w] and opponent.rect.top > 0:
+                opponent.move(up=True)
+            if keys[pygame.K_s] and opponent.rect.bottom < screen_height:
+                opponent.move(up=False)
 
-        if keys[pygame.K_PLUS] or keys[pygame.K_EQUALS]:
-            ball_speed += 0.2
-        if keys[pygame.K_MINUS] and ball_speed > min_ball_speed:
-            ball_speed -= 0.2
+            ball.move()
 
-        ball.speed_x = ball_speed * (1 if ball.speed_x > 0 else -1)
-        ball.speed_y = ball_speed * (1 if ball.speed_y > 0 else -1)
-
-        ball.move()
-
-        ball_speed += speed_increment
-
-        if ball.rect.left <= 0:
-            score_sound.play()
-            player_score += 1
-            ball.hide()
-            if player_score < winning_score:
-                countdown_to_next_round()
-            ball_speed = initial_ball_speed
-            ball = Ball(screen_width // 2 - ball_size // 2, screen_height // 2 - ball_size // 2, speed=ball_speed)
-            player = Paddle(player_start_x, player_start_y)
-            opponent = Paddle(opponent_start_x, opponent_start_y)
-
-        if ball.rect.right >= screen_width:
-            score_sound.play()
-            opponent_score += 1
-            ball.hide()
-            if opponent_score < winning_score:
-                countdown_to_next_round()
-            ball_speed = initial_ball_speed
-            ball = Ball(screen_width // 2 - ball_size // 2, screen_height // 2 - ball_size // 2, speed=ball_speed)
-            player = Paddle(player_start_x, player_start_y)
-            opponent = Paddle(opponent_start_x, opponent_start_y)
-
-        if ball.rect and (ball.rect.colliderect(player.rect) or ball.rect.colliderect(opponent.rect)):
+        # Ball collisions with paddles
+        if ball.rect.colliderect(player.rect) or ball.rect.colliderect(opponent.rect):
             hit_sound.play()
             if ball.rect.colliderect(player.rect):
                 ball.rect.right = player.rect.left
-            elif ball.rect.colliderect(opponent.rect):
+            else:
                 ball.rect.left = opponent.rect.right
             ball.speed_x *= -1
 
-        if player_score == winning_score or opponent_score == winning_score:
-            bob.play()
-            winner_text = "Player 2 Wins!" if player_score == winning_score else "Player 1 Wins!"
-            display_winner(winner_text, initial_ball_speed)
-            running = False
+        # Scoring
+        if ball.rect.left <= 0:
+            player_score += 1
+            score_sound.play()
 
+            
+            if player_score == winning_score:
+                bob.play()
+                display_winner("Player 1 Wins!", initial_ball_speed)
+                running = False
+                continue
+
+            countdown("Next Round")
+
+            ball = Ball(
+                screen_width // 2 - ball_size // 2,
+                screen_height // 2 - ball_size // 2,
+                speed=initial_ball_speed
+            )
+
+            player.rect.y = player_start_y
+            opponent.rect.y = opponent_start_y
+
+        if ball.rect.right >= screen_width:
+            opponent_score += 1
+            score_sound.play()
+
+            if opponent_score == winning_score:
+                bob.play()
+                display_winner("Player 2 Wins!", initial_ball_speed)
+                running = False
+                continue
+
+            countdown("Next Round")
+
+            ball = Ball(
+                screen_width // 2 - ball_size // 2,
+                screen_height // 2 - ball_size // 2,
+                speed=initial_ball_speed
+            )
+
+            player.rect.y = player_start_y
+            opponent.rect.y = opponent_start_y
+
+        # Drawing
         screen.fill(black)
+
         player.draw()
         opponent.draw()
         ball.draw()
 
         player_text = font.render(str(player_score), True, white)
         opponent_text = font.render(str(opponent_score), True, white)
+
         screen.blit(player_text, (screen_width - 100, 10))
         screen.blit(opponent_text, (50, 10))
+
+        # Draw pause button
+        pygame.draw.rect(screen, white, pause_button, 2)
+
+        pause_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 18)
+        if paused:
+            pause_text = pause_font.render("RESUME", True, white)
+        else:
+            pause_text = pause_font.render("PAUSE", True, white)
+
+        screen.blit(
+            pause_text,
+            (
+                pause_button.centerx - pause_text.get_width() // 2,
+                pause_button.centery - pause_text.get_height() // 2
+            )
+        )
+
+        # Paused overlay
+        if paused:
+            overlay = font.render("PAUSED", True, white)
+            screen.blit(
+                overlay,
+                (
+                    screen_width // 2 - overlay.get_width() // 2,
+                    screen_height // 2 - overlay.get_height() // 2
+                )
+            )
 
         pygame.display.flip()
         clock.tick(60)
 
     pygame.quit()
 
-def countdown_to_next_round():
-    for i in range(3, 0, -1):
-        screen.fill(black)
-        countdown_text = font.render(f"Next Round in {i}", True, white)
-        screen.blit(countdown_text, (screen_width // 2 - countdown_text.get_width() // 2, screen_height // 2 - countdown_text.get_height() // 2))
-        pygame.display.flip()
-        time.sleep(1)
 
 def display_winner(winner_text, ball_speed):
     screen.fill(black)
@@ -227,12 +354,16 @@ def display_winner(winner_text, ball_speed):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     bob.stop()
-                    game_loop(ball_speed)
+                    chosen_speed = start_screen()
+                    countdown("Get Ready")
+                    game_loop(chosen_speed)
                     waiting_for_input = False
                 elif event.key == pygame.K_q:
                     bob.stop()
                     waiting_for_input = False
 
 if __name__ == "__main__":
-    start_screen()
-    game_loop()
+    chosen_speed = start_screen()
+    countdown("Get Ready")
+    game_loop(chosen_speed)
+
