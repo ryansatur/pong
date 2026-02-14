@@ -1,10 +1,16 @@
 import pygame
 import random
 import time
+import math
 
 pygame.mixer.pre_init(22050, -16, 2, 512)  # Lower frequency for faster processing
 pygame.init()
 pygame.font.init()
+
+
+pygame.display.set_caption('PONG BY RYAN SATUR')
+
+
 
 # Measurements
 screen_width = 800
@@ -20,21 +26,24 @@ ball_size = 15
 
 
 screen = pygame.display.set_mode((screen_width, screen_height))
-pygame.display.set_caption('Pong')
 
-font = pygame.font.Font(r"fonts\Silkscreen-Regular.ttf", 74)
-start_font = pygame.font.Font(r"fonts\Silkscreen-Regular.ttf", 30)
+font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 74)
+start_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 30)
 
-hit_sound = pygame.mixer.Sound(r"sfx\hit.wav")
-score_sound = pygame.mixer.Sound(r"sfx\score.mp3")
-bob = pygame.mixer.Sound(r"sfx\bob.wav")
+hit_sound = pygame.mixer.Sound(r"_internal\hit.wav")
+score_sound = pygame.mixer.Sound(r"_internal\score.mp3")
+bob = pygame.mixer.Sound(r"_internal\bob.wav")
+icon_image = pygame.image.load(r'_internal\table-tennis-racket.ico')
+pygame.display.set_icon(icon_image)
 
 class Paddle:
     def __init__(self, x, y):
+        
         self.rect = pygame.Rect(x, y, paddle_width, paddle_height)
         self.speed = 6
 
     def move(self, up=True):
+        
         if up:
             self.rect.y -= self.speed
         else:
@@ -44,12 +53,15 @@ class Paddle:
         pygame.draw.rect(screen, white, self.rect)
 
 class Ball:
+    
     def __init__(self, x, y, speed=20):
+        
         self.rect = pygame.Rect(x, y, ball_size, ball_size)
         self.speed_x = speed * random.choice((1, -1))
         self.speed_y = speed * random.choice((1, -1))
 
     def move(self):
+        
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
 
@@ -65,6 +77,7 @@ class Ball:
         self.rect = None
 
 def start_screen():
+    
     screen.fill(black)
     start_text = start_font.render("Press SPACEBAR to start", True, white)
     screen.blit(start_text, (screen_width // 2 - start_text.get_width() // 2, screen_height // 2 - start_text.get_height() // 2))
@@ -80,7 +93,7 @@ def start_screen():
                 if event.key == pygame.K_SPACE:
                     waiting = False
 
-def game_loop(ball_speed=5.3):
+def game_loop(initial_ball_speed=5.3):
     clock = pygame.time.Clock()
     running = True
 
@@ -92,6 +105,8 @@ def game_loop(ball_speed=5.3):
     player = Paddle(player_start_x, player_start_y)
     opponent = Paddle(opponent_start_x, opponent_start_y)
     min_ball_speed = 1
+    speed_increment = 0.0004
+    ball_speed = initial_ball_speed
     ball = Ball(screen_width // 2 - ball_size // 2, screen_height // 2 - ball_size // 2, speed=ball_speed)
 
     player_score = 0
@@ -102,15 +117,23 @@ def game_loop(ball_speed=5.3):
         for event in pygame.event.get():
             if event.type is pygame.QUIT:
                 running = False
+            if event.type is pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
+                    running = False
 
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_UP] and player.rect.top > 0:
+        player_moving_up = keys[pygame.K_UP] and player.rect.top > 0
+        player_moving_down = keys[pygame.K_DOWN] and player.rect.bottom < screen_height
+        opponent_moving_up = keys[pygame.K_w] and opponent.rect.top > 0
+        opponent_moving_down = keys[pygame.K_s] and opponent.rect.bottom < screen_height
+
+        if player_moving_up:
             player.move(up=True)
-        if keys[pygame.K_DOWN] and player.rect.bottom < screen_height:
+        if player_moving_down:
             player.move(up=False)
-        if keys[pygame.K_w] and opponent.rect.top > 0:
+        if opponent_moving_up:
             opponent.move(up=True)
-        if keys[pygame.K_s] and opponent.rect.bottom < screen_height:
+        if opponent_moving_down:
             opponent.move(up=False)
 
         if keys[pygame.K_PLUS] or keys[pygame.K_EQUALS]:
@@ -123,12 +146,15 @@ def game_loop(ball_speed=5.3):
 
         ball.move()
 
+        ball_speed += speed_increment
+
         if ball.rect.left <= 0:
             score_sound.play()
             player_score += 1
             ball.hide()
             if player_score < winning_score:
                 countdown_to_next_round()
+            ball_speed = initial_ball_speed
             ball = Ball(screen_width // 2 - ball_size // 2, screen_height // 2 - ball_size // 2, speed=ball_speed)
             player = Paddle(player_start_x, player_start_y)
             opponent = Paddle(opponent_start_x, opponent_start_y)
@@ -139,18 +165,23 @@ def game_loop(ball_speed=5.3):
             ball.hide()
             if opponent_score < winning_score:
                 countdown_to_next_round()
+            ball_speed = initial_ball_speed
             ball = Ball(screen_width // 2 - ball_size // 2, screen_height // 2 - ball_size // 2, speed=ball_speed)
             player = Paddle(player_start_x, player_start_y)
             opponent = Paddle(opponent_start_x, opponent_start_y)
 
         if ball.rect and (ball.rect.colliderect(player.rect) or ball.rect.colliderect(opponent.rect)):
             hit_sound.play()
+            if ball.rect.colliderect(player.rect):
+                ball.rect.right = player.rect.left
+            elif ball.rect.colliderect(opponent.rect):
+                ball.rect.left = opponent.rect.right
             ball.speed_x *= -1
 
         if player_score == winning_score or opponent_score == winning_score:
             bob.play()
             winner_text = "Player 2 Wins!" if player_score == winning_score else "Player 1 Wins!"
-            display_winner(winner_text, ball_speed)
+            display_winner(winner_text, initial_ball_speed)
             running = False
 
         screen.fill(black)
@@ -183,7 +214,7 @@ def display_winner(winner_text, ball_speed):
     pygame.display.flip()
     pygame.time.wait(1000)
 
-    option_font = pygame.font.Font(r"fonts\Silkscreen-Regular.ttf", 20)
+    option_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 20)
     play_again_text = option_font.render("Press R to Play Again or Q to Quit", True, white)
     screen.blit(play_again_text, (screen_width // 2 - play_again_text.get_width() // 2, screen_height // 2 + 50))
     pygame.display.flip()
