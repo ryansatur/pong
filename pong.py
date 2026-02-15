@@ -1,5 +1,7 @@
 import pygame
 import random
+import time
+import math
 
 pygame.mixer.pre_init(22050, -16, 2, 512)  # Lower frequency for faster processing
 pygame.init()
@@ -25,14 +27,23 @@ ball_size = 15
 
 screen = pygame.display.set_mode((screen_width, screen_height))
 
-font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 74)
-start_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 30)
+font = pygame.font.Font(r"fonts\Silkscreen-Regular.ttf", 74)
+start_font = pygame.font.Font(r"fonts\Silkscreen-Regular.ttf", 30)
 
-hit_sound = pygame.mixer.Sound(r"_internal\hit.wav")
-score_sound = pygame.mixer.Sound(r"_internal\score.mp3")
-bob = pygame.mixer.Sound(r"_internal\bob.wav")
-icon_image = pygame.image.load(r"_internal\table-tennis-racket.ico")
+hit_sound = pygame.mixer.Sound(r"sfx\hit.wav")
+score_sound = pygame.mixer.Sound(r"sfx\score.mp3")
+bob = pygame.mixer.Sound(r"sfx\bob.wav")
+icon_image = pygame.image.load(r"img\table-tennis-racket.ico")
 pygame.display.set_icon(icon_image)
+restart_icon = pygame.image.load("img/restart.png").convert_alpha()
+pause_icon = pygame.image.load("img/pause.png").convert_alpha()
+help_icon = pygame.image.load("img/questionmark.png").convert_alpha()
+
+icon_size = 40
+restart_icon = pygame.transform.scale(restart_icon, (icon_size, icon_size))
+pause_icon = pygame.transform.scale(pause_icon, (icon_size, icon_size))
+help_icon = pygame.transform.scale(help_icon, (icon_size, icon_size))
+
 
 class Paddle:
     def __init__(self, x, y):
@@ -77,7 +88,7 @@ def start_screen():
     screen.fill(black)
 
     title_text = font.render("PONG", True, white)
-    option_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 28)
+    option_font = pygame.font.Font(r"fonts\Silkscreen-Regular.ttf", 28)
 
     slow_text = option_font.render("1 - Slow", True, white)
     normal_text = option_font.render("2 - Normal", True, white)
@@ -113,7 +124,7 @@ def choose_speed():
     screen.fill(black)
 
     title_text = font.render("Choose Speed", True, white)
-    option_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 28)
+    option_font = pygame.font.Font(r"fonts\Silkscreen-Regular.ttf", 28)
 
     slow_text = option_font.render("1 - Slow", True, white)
     normal_text = option_font.render("2 - Normal", True, white)
@@ -139,37 +150,90 @@ def choose_speed():
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    return 5      # Slow speed
+                    return 4.8      # Slow speed
                 if event.key == pygame.K_2:
-                    return 6      # Normal speed
+                    return 5.8      # Normal speed
                 if event.key == pygame.K_3:
-                    return 7      # Fast speed
+                    return 6.8      # Fast speed
+
 
 def countdown(message=""):
-    for i in range(3, 0, -1):
-        screen.fill(black)
+    clock = pygame.time.Clock()
 
-        if message:
-            msg_text = start_font.render(message, True, white)
+    for i in range(3, 0, -1):
+        start_time = pygame.time.get_ticks()
+
+        while pygame.time.get_ticks() - start_time < 1000:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
+                        pygame.quit()
+                        exit()
+
+            screen.fill(black)
+
+            if message:
+                msg_text = start_font.render(message, True, white)
+                screen.blit(
+                    msg_text,
+                    (
+                        screen_width // 2 - msg_text.get_width() // 2,
+                        screen_height // 2 - 100
+                    )
+                )
+
+            number_text = font.render(str(i), True, white)
             screen.blit(
-                msg_text,
+                number_text,
                 (
-                    screen_width // 2 - msg_text.get_width() // 2,
-                    screen_height // 2 - 100
+                    screen_width // 2 - number_text.get_width() // 2,
+                    screen_height // 2 - number_text.get_height() // 2
                 )
             )
 
-        number_text = font.render(str(i), True, white)
-        screen.blit(
-            number_text,
-            (
-                screen_width // 2 - number_text.get_width() // 2,
-                screen_height // 2 - number_text.get_height() // 2
+            pygame.display.flip()
+            clock.tick(60)
+
+def show_help():
+    showing = True
+    help_font = pygame.font.Font(r"fonts\Silkscreen-Regular.ttf", 22)
+
+    while showing:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    showing = False
+
+        screen.fill(black)
+
+        lines = [
+            "Controls:",
+            "Player 1: W / S",
+            "Player 2: UP ARROW / DOWN ARROW",
+            "Pause: Press button or press P",
+            "Restart: Press button or press M",
+            "ESC - Quit",
+            "",
+            "Press ESC to Close Help"
+        ]
+
+        for i, line in enumerate(lines):
+            text = help_font.render(line, True, white)
+            screen.blit(
+                text,
+                (
+                    screen_width // 2 - text.get_width() // 2,
+                    120 + i * 40
+                )
             )
-        )
 
         pygame.display.flip()
-        pygame.time.delay(1000)
 
 
 def game_loop(initial_ball_speed=5.3):
@@ -185,7 +249,10 @@ def game_loop(initial_ball_speed=5.3):
     opponent = Paddle(opponent_start_x, opponent_start_y)
 
     # --- NEW SYSTEM VARIABLES ---
-    pause_button = pygame.Rect(350, 30, 90, 40)
+    restart_button = restart_icon.get_rect(topleft=(screen_width//2 - 60, 20))
+    pause_button = pause_icon.get_rect(topleft=(screen_width//2 - 20, 20))
+    help_button = help_icon.get_rect(topleft=(screen_width//2 + 20, 20))
+
     paused = False
     # ----------------------------
 
@@ -213,10 +280,19 @@ def game_loop(initial_ball_speed=5.3):
                 # Pause toggle
                 if event.key == pygame.K_p:
                     paused = not paused
+            
+            if (event.type == pygame.MOUSEBUTTONDOWN and restart_button.collidepoint(event.pos)) or (event.type == pygame.KEYDOWN and event.key == pygame.K_m):
+                return "menu"
 
             if event.type == pygame.MOUSEBUTTONDOWN:
+
                 if pause_button.collidepoint(event.pos):
                     paused = not paused
+
+                if help_button.collidepoint(event.pos):
+                    paused = True
+                    show_help()
+
 
         keys = pygame.key.get_pressed()
 
@@ -292,28 +368,17 @@ def game_loop(initial_ball_speed=5.3):
         opponent.draw()
         ball.draw()
 
+        screen.blit(restart_icon, restart_button)
+        screen.blit(pause_icon, pause_button)
+        screen.blit(help_icon, help_button)
+
         player_text = font.render(str(player_score), True, white)
         opponent_text = font.render(str(opponent_score), True, white)
 
         screen.blit(player_text, (screen_width - 100, 10))
         screen.blit(opponent_text, (50, 10))
 
-        # Draw pause button
-        pygame.draw.rect(screen, white, pause_button, 2)
 
-        pause_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 18)
-        if paused:
-            pause_text = pause_font.render("RESUME", True, white)
-        else:
-            pause_text = pause_font.render("PAUSE", True, white)
-
-        screen.blit(
-            pause_text,
-            (
-                pause_button.centerx - pause_text.get_width() // 2,
-                pause_button.centery - pause_text.get_height() // 2
-            )
-        )
 
         # Paused overlay
         if paused:
@@ -339,7 +404,7 @@ def display_winner(winner_text, ball_speed):
     pygame.display.flip()
     pygame.time.wait(1000)
 
-    option_font = pygame.font.Font(r"_internal\Silkscreen-Regular.ttf", 20)
+    option_font = pygame.font.Font(r"fonts\Silkscreen-Regular.ttf", 20)
     play_again_text = option_font.render("Press R to Play Again or Q to Quit", True, white)
     screen.blit(play_again_text, (screen_width // 2 - play_again_text.get_width() // 2, screen_height // 2 + 50))
     pygame.display.flip()
@@ -361,9 +426,12 @@ def display_winner(winner_text, ball_speed):
                     waiting_for_input = False
 
 if __name__ == "__main__":
-    chosen_speed = start_screen()
-    countdown("Get Ready")
-    game_loop(chosen_speed)
+    running = True
+    while running:
+        chosen_speed = start_screen()
+        countdown("Get Ready")
+        result = game_loop(chosen_speed)
 
-
+        if result == "quit":
+            running = False
 
