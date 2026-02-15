@@ -1,6 +1,5 @@
 import pygame
 import random
-import time
 
 pygame.mixer.pre_init(22050, -16, 2, 512)  # Lower frequency for faster processing
 pygame.init()
@@ -104,11 +103,11 @@ def start_screen():
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    return 4
+                    return 4.8
                 if event.key == pygame.K_2:
-                    return 6
+                    return 5.8
                 if event.key == pygame.K_3:
-                    return 8
+                    return 6.8
 
 def choose_speed():
     screen.fill(black)
@@ -365,5 +364,6 @@ if __name__ == "__main__":
     chosen_speed = start_screen()
     countdown("Get Ready")
     game_loop(chosen_speed)
+
 
 
