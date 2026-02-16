@@ -1,7 +1,6 @@
 import pygame
 import random
-import time
-import math
+
 
 pygame.mixer.pre_init(22050, -16, 2, 512)  # Lower frequency for faster processing
 pygame.init()
@@ -434,4 +433,5 @@ if __name__ == "__main__":
 
         if result == "quit":
             running = False
+
 
